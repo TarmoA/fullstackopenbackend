@@ -1,8 +1,9 @@
 const express = require('express');
 const morgan = require('morgan');
+const cors = require('cors');
 const persons = require('./persons.js');
 
-const PORT = 3001
+const PORT = process.env['PORT'] || 3001
 const app = express();
 
 morgan.token('body', (req, res) => {
@@ -13,7 +14,9 @@ morgan.token('body', (req, res) => {
 });
 
 const tinyFormat = ':method :url :status :res[content-length] - :response-time ms';
+app.use(cors());
 app.use(morgan(`${tinyFormat} :body`));
+app.use(express.static('build'));
 app.use(express.json())
 
 
