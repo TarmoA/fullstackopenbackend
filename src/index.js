@@ -1,9 +1,21 @@
 const express = require('express');
+const morgan = require('morgan');
 const persons = require('./persons.js');
 
 const PORT = 3001
 const app = express();
+
+morgan.token('body', (req, res) => {
+    if (req.body) {
+        return JSON.stringify(req.body)
+    }
+    return '';
+});
+
+const tinyFormat = ':method :url :status :res[content-length] - :response-time ms';
+app.use(morgan(`${tinyFormat} :body`));
 app.use(express.json())
+
 
 
 app.get('/info', (request, response) => {
