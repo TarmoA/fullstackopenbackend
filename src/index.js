@@ -115,6 +115,29 @@ app.post('/api/persons', async (request, response, next) => {
         next(error)
     }
 })
+app.put('/api/persons', async (request, response, next) => {
+    try {
+        const person = request.body;
+        if (!person.name) {
+            throw new Error('missing name')
+        }
+        if (!person.number) {
+            throw new Error('missing number')
+        }
+        const found = await persons.getById(person.id);
+        if (!found.length) {
+            throw new Error('person must exist')
+        }
+        const result = await persons.create(person);
+        if (!result) {
+            throw new Error();
+        }
+        persons.close();
+        response.end();
+    } catch (error) {
+        next(error)
+    }
+})
 
 app.use(errorHandler)
 
