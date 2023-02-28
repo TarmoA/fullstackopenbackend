@@ -115,9 +115,10 @@ app.post('/api/persons', async (request, response, next) => {
         next(error)
     }
 })
-app.put('/api/persons', async (request, response, next) => {
+app.put('/api/persons/:id', async (request, response, next) => {
     try {
         const person = request.body;
+        person.id = request.params.id;
         if (!person.name) {
             throw new Error('missing name')
         }
@@ -128,7 +129,7 @@ app.put('/api/persons', async (request, response, next) => {
         if (!found.length) {
             throw new Error('person must exist')
         }
-        const result = await persons.create(person);
+        const result = await persons.update(person);
         if (!result) {
             throw new Error();
         }

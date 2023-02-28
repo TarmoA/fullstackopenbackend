@@ -9,6 +9,14 @@ const personSchema = new mongoose.Schema({
     number: String,
 });
 
+personSchema.set('toJSON', {
+    transform: (document, returnedObject) => {
+        returnedObject.id = returnedObject._id.toString()
+        delete returnedObject._id
+        delete returnedObject.__v
+    }
+})
+
 const Person = mongoose.model('Person', personSchema)
 
 const init = () => {
@@ -47,4 +55,9 @@ const create = (person) => {
     return newPerson.save();
 }
 
-module.exports = { init, getAll, getInfo, getById, deleteById, create, getByName, close };
+const update = (person) => {
+    return Person.updateOne({ '_id': person.id }, { number: person.number })
+
+}
+
+module.exports = { init, getAll, getInfo, getById, deleteById, create, getByName, close, update };
