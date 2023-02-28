@@ -1,3 +1,4 @@
+require('dotenv').config()
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
@@ -18,35 +19,44 @@ app.use(cors());
 app.use(morgan(`${tinyFormat} :body`));
 app.use(express.static('build'));
 app.use(express.json())
-
-
-
-app.get('/info', (request, response) => {
-    response.send(persons.getInfo(request));
+app.use(async (req, res, next) => {
+    await persons.init();
+    next();
 })
 
-app.get('/api/persons', (request, response) => {
-    response.json(persons.getAll());
+app.get('/info', async (request, response) => {
+    const info = await persons.getInfo(request)
+    response.send(info);
+    persons.close();
 })
-app.get('/api/persons/:id', (request, response) => {
+
+app.get('/api/persons', async (request, response) => {
+    const all = await persons.getAll()
+    response.json(all);
+    persons.close();
+})
+app.get('/api/persons/:id', async (request, response) => {
     const id = request.params.id
-    const person = persons.getById(id);
+    const person = await persons.getById(id);
     if (!person) {
         response.status(404).send('Not found');
         return;
     }
     response.json(person);
+    persons.close();
+
 })
-app.delete('/api/persons/:id', (request, response) => {
+app.delete('/api/persons/:id', async (request, response) => {
     const id = request.params.id
-    const result = persons.deleteById(id);
+    const result = await persons.deleteById(id);
     if (!result) {
         response.status(404).send('Not found');
         return;
     }
+    persons.close();
     response.end();
-})
-app.post('/api/persons', (request, response) => {
+});
+app.post('/api/persons', async (request, response) => {
     const person = request.body;
     if (!person.name) {
         response.status(400).json({ error: 'missing name' });
@@ -56,15 +66,17 @@ app.post('/api/persons', (request, response) => {
         response.status(400).json({ error: 'missing number' });
         return;
     }
-    if (persons.getByName(person.name)) {
+    const found = await persons.getByName(person.name);
+    if (found.length) {
         response.status(400).json({ error: 'name must be unique' });
         return;
     }
-    const result = persons.create(person);
+    const result = await persons.create(person);
     if (!result) {
         response.status(500).send('Server error');
         return;
     }
+    persons.close();
     response.end();
 })
 

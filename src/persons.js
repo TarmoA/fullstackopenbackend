@@ -1,39 +1,50 @@
-const data = require('./data.js');
+const mongoose = require('mongoose');
 
-const getAll = () => {
-    return data;
+const password = process.env['MONGOPASSWORD']
+
+const url = `mongodb+srv://mongoapp:${password}@cluster0.ahyualj.mongodb.net/phonebook?retryWrites=true&w=majority`;
+
+const personSchema = new mongoose.Schema({
+    name: String,
+    number: String,
+});
+
+const Person = mongoose.model('Person', personSchema)
+
+const init = () => {
+    return mongoose.connect(url).catch(error => console.log(error))
 }
 
-const getInfo = () => {
-    const count = data.length;
+const close = async () => {
+    return mongoose.connection.close();
+}
+
+const getAll = () => {
+    return Person.find({});
+}
+
+const getInfo = async () => {
+    const count = (await getAll()).length;
     const time = (new Date()).toString();
     return `<p>Phonebook has info on ${count} people</p><p>${time}</p>`;
 }
 
 const getById = (id) => {
-    const found = data.find(entry => Number(entry.id) === Number(id));
-    return found;
+    return Person.find({'_id': id})
 }
 
 const getByName = (name) => {
-    const found = data.find(entry => entry.name === name);
-    return found;
+    return Person.find({name})
 }
 
-const deleteById = (id) => {
-    const found = data.findIndex(entry => Number(entry.id) === Number(id))
-    if (found === -1) {
-        return false;
-    }
-    data.splice(found, 1);
-    return true;
+const deleteById = async (id) => {
+    const result = await Person.deleteOne({id});
+    return result.deletedCount === 1;
 }
-
 
 const create = (person) => {
-    const id = Math.round(Math.random() * 1000000);
-    data.push({ ...person, id });
-    return true;
+    const newPerson = new Person(person);
+    return newPerson.save();
 }
 
-module.exports = { getAll, getInfo, getById, deleteById, create, getByName };
+module.exports = { init, getAll, getInfo, getById, deleteById, create, getByName, close };
