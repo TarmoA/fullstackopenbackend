@@ -5,8 +5,22 @@ const password = process.env['MONGOPASSWORD']
 const url = `mongodb+srv://mongoapp:${password}@cluster0.ahyualj.mongodb.net/phonebook?retryWrites=true&w=majority`;
 
 const personSchema = new mongoose.Schema({
-    name: String,
-    number: String,
+    name: {
+        type: String,
+        minLength: 3,
+        required: true,
+    },
+    number: {
+        type: String,
+        minLength: 8,
+        required: true,
+        validate: {
+            validator: (value) => {
+                return /^(\d{2,3}-)?\d+$/.test(value);
+            },
+            message: () => 'number must be a valid phone number'
+        }
+    },
 });
 
 personSchema.set('toJSON', {
@@ -46,7 +60,7 @@ const getByName = (name) => {
 }
 
 const deleteById = async (id) => {
-    const result = await Person.deleteOne({id});
+    const result = await Person.deleteOne({'_id': id});
     return result.deletedCount === 1;
 }
 
@@ -56,8 +70,7 @@ const create = (person) => {
 }
 
 const update = (person) => {
-    return Person.updateOne({ '_id': person.id }, { number: person.number })
-
+    return Person.updateOne({ '_id': person.id }, { number: person.number }, { runValidators: true })
 }
 
 module.exports = { init, getAll, getInfo, getById, deleteById, create, getByName, close, update };
