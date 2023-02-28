@@ -20,66 +20,103 @@ app.use(morgan(`${tinyFormat} :body`));
 app.use(express.static('build'));
 app.use(express.json())
 app.use(async (req, res, next) => {
+    // open db connection
     await persons.init();
     next();
 })
 
-app.get('/info', async (request, response) => {
-    const info = await persons.getInfo(request)
-    response.send(info);
-    persons.close();
+// error handler for any thrown errors
+const errorHandler = (error, req, res, next) => {
+    console.log('error handler')
+    console.log(error)
+    try {
+        // close db connection
+        persons.close();
+    } catch {
+    }
+    if (error.name === 'CastError') {
+        return res.status(400).send({ error: 'malformatted id' })
+    }
+    if (error.message === 'NotFound') {
+        return res.status(404).send({ error: 'not found' })
+    }
+    if (error.message) {
+        return res.status(400).send({ error: error.message })
+    }
+    return res.status(500).send({ error: 'server error' });
+}
+
+app.get('/info', async (request, response, next) => {
+    try {
+        const info = await persons.getInfo(request)
+        response.send(info);
+        persons.close();
+    } catch (error) {
+        next(error)
+    }
 })
 
-app.get('/api/persons', async (request, response) => {
-    const all = await persons.getAll()
-    response.json(all);
-    persons.close();
-})
-app.get('/api/persons/:id', async (request, response) => {
-    const id = request.params.id
-    const person = await persons.getById(id);
-    if (!person) {
-        response.status(404).send('Not found');
-        return;
+app.get('/api/persons', async (request, response, next) => {
+    try {
+        const all = await persons.getAll()
+        response.json(all);
+        persons.close();
+    } catch (error) {
+        next(error)
     }
-    response.json(person);
-    persons.close();
+})
+app.get('/api/persons/:id', async (request, response, next) => {
+    try {
+        const id = request.params.id
+        const person = await persons.getById(id);
+        if (!person.length) {
+            throw new Error('NotFound');
+        }
+        response.json(person);
+        persons.close();
+    } catch (error) {
+        next(error)
+    }
 
 })
-app.delete('/api/persons/:id', async (request, response) => {
-    const id = request.params.id
-    const result = await persons.deleteById(id);
-    if (!result) {
-        response.status(404).send('Not found');
-        return;
+app.delete('/api/persons/:id', async (request, response, next) => {
+    try {
+        const id = request.params.id
+        const result = await persons.deleteById(id);
+        if (!result) {
+            throw new Error('NotFound');
+        }
+        persons.close();
+        response.end();
+    } catch (error) {
+        next(error)
     }
-    persons.close();
-    response.end();
 });
-app.post('/api/persons', async (request, response) => {
-    const person = request.body;
-    if (!person.name) {
-        response.status(400).json({ error: 'missing name' });
-        return;
+app.post('/api/persons', async (request, response, next) => {
+    try {
+        const person = request.body;
+        if (!person.name) {
+            throw new Error('missing name')
+        }
+        if (!person.number) {
+            throw new Error('missing number')
+        }
+        const found = await persons.getByName(person.name);
+        if (found.length) {
+            throw new Error('name must be unique')
+        }
+        const result = await persons.create(person);
+        if (!result) {
+            throw new Error();
+        }
+        persons.close();
+        response.end();
+    } catch (error) {
+        next(error)
     }
-    if (!person.number) {
-        response.status(400).json({ error: 'missing number' });
-        return;
-    }
-    const found = await persons.getByName(person.name);
-    if (found.length) {
-        response.status(400).json({ error: 'name must be unique' });
-        return;
-    }
-    const result = await persons.create(person);
-    if (!result) {
-        response.status(500).send('Server error');
-        return;
-    }
-    persons.close();
-    response.end();
 })
 
+app.use(errorHandler)
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
